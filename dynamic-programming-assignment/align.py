@@ -125,24 +125,26 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
             row.append(0)
     
     if strategy == 'global':
-        #####################
-        # START CODING HERE #
-        #####################
         
         for i in range(M):
             score_matrix[i][0] -= i * gap_penalty
         for i in range(N):
             score_matrix[0][i] -= i * gap_penalty
 
-        #####################
-        #  END CODING HERE  #
-        #####################
+    elif strategy == 'semiglobal':
+
+        for i in range(M):
+            score_matrix[i][0] = 0
+        for i in range(N):
+            score_matrix[0][i] = 0
+
 
     ### 2: Fill in Score Matrix
  
     #####################
     # START CODING HERE #
     #####################
+
     def dp_function(i, j):
         if i == j == 0:
             return 0
@@ -159,22 +161,34 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
     #  END CODING HERE  #
     #####################   
     
-    aligned_seq1 = aligned_seq2 = ''
-    i, j = M-1, N-1
-    while i > 0 or j > 0:
-        if i > 0 and score_matrix[i][j] == score_matrix[i-1][j] - gap_penalty:
-            aligned_seq1 = seq1[i-1] + aligned_seq1
-            aligned_seq2 = '-' + aligned_seq2
-            i -= 1
-        elif i > 0 and j > 0 and score_matrix[i][j] == score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]:
-            aligned_seq1 = seq1[i-1] + aligned_seq1
-            aligned_seq2 = seq2[j-1] + aligned_seq2
-            i -= 1
-            j -= 1
-        elif j > 0:
-            aligned_seq1 = '-' + aligned_seq1
-            aligned_seq2 = seq2[j-1] + aligned_seq2
-            j -= 1
+    def get_traceback_start():
+        if strategy == 'global':
+            return M-1, N-1
+        if strategy == 'local':
+            # todo, will continue
+            pass
+
+    def traceback(start_i, start_j):
+        aligned_seq1 = aligned_seq2 = ''
+        i, j = start_i, start_j
+        while i > 0 or j > 0:
+            if i > 0 and score_matrix[i][j] == score_matrix[i-1][j] - gap_penalty:
+                aligned_seq1 = seq1[i-1] + aligned_seq1
+                aligned_seq2 = '-' + aligned_seq2
+                i -= 1
+            elif i > 0 and j > 0 and score_matrix[i][j] == score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]:
+                aligned_seq1 = seq1[i-1] + aligned_seq1
+                aligned_seq2 = seq2[j-1] + aligned_seq2
+                i -= 1
+                j -= 1
+            elif j > 0:
+                aligned_seq1 = '-' + aligned_seq1
+                aligned_seq2 = seq2[j-1] + aligned_seq2
+                j -= 1
+        return aligned_seq1, aligned_seq2
+    
+
+    aligned_seq1, aligned_seq2 = traceback(M-1,N-1)
        
     align_score = score_matrix[M-1][N-1]
     alignment = (aligned_seq1, aligned_seq2, align_score)
