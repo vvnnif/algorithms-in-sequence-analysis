@@ -125,14 +125,11 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
             row.append(0)
     
     if strategy == 'global':
-        
         for i in range(M):
             score_matrix[i][0] -= i * gap_penalty
         for i in range(N):
             score_matrix[0][i] -= i * gap_penalty
-
-    elif strategy == 'semiglobal':
-
+    else:
         for i in range(M):
             score_matrix[i][0] = 0
         for i in range(N):
@@ -148,10 +145,14 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
     def dp_function(i, j):
         if i == j == 0:
             return 0
-        return max(score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]], 
-                    score_matrix[i-1][j] - gap_penalty, 
-                    score_matrix[i][j-1] - gap_penalty)
-    
+        up = score_matrix[i-1][j] - gap_penalty
+        diagonal = score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]
+        left = score_matrix[i][j-1] - gap_penalty
+        if strategy == 'global' or strategy == 'semiglobal':
+            return max(up, diagonal, left)
+        elif strategy == 'local':
+            return max(up, diagonal, left, 0)
+
 
     for i in range(1,M):
         for j in range(1,N):
@@ -161,10 +162,31 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
     #  END CODING HERE  #
     #####################   
     
+    ''' Returns the position in the score matrix
+        from whence to start the traceback,
+        which depends on the algorithm used.
+        The output will consist of two integers,
+        the first being the row index and the second
+        being the column index.
+    '''
     def get_traceback_start():
         if strategy == 'global':
-            return M-1, N-1
+            return M-1, N-1 # Bottom-right corner
         if strategy == 'local':
+            # Return the position with maximum score. If
+            # there are multiple such positions,
+            # choose the upper-rightmost one.
+            maxscore = float("-inf")
+            best_i, best_j = 0, 0
+            for i in range(M):
+                for j in range(N):
+                    val = score_matrix[i][j]
+                    if (val > maxscore
+                        or (val == maxscore and (i < best_i or (i == best_i and j > best_j)))):
+                        maxscore = val
+                        best_i, best_j = i, j
+            return best_i, best_j
+        if strategy == 'semiglobal':
             # todo, will continue
             pass
 
@@ -188,9 +210,10 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
         return aligned_seq1, aligned_seq2
     
 
-    aligned_seq1, aligned_seq2 = traceback(M-1,N-1)
+    start_i, start_j = get_traceback_start()
+    aligned_seq1, aligned_seq2 = traceback(start_i, start_j)
        
-    align_score = score_matrix[M-1][N-1]
+    align_score = score_matrix[start_i][start_j]
     alignment = (aligned_seq1, aligned_seq2, align_score)
     return (alignment, score_matrix)
 
