@@ -148,16 +148,20 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
         up = score_matrix[i-1][j] - gap_penalty
         diagonal = score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]
         left = score_matrix[i][j-1] - gap_penalty
-        if strategy == 'global' or strategy == 'semiglobal':
-            return max(up, diagonal, left)
-        elif strategy == 'local':
-            return max(up, diagonal, left, 0)
+        if strategy == 'local':
+            options = {'up': up, 'diagonal': diagonal, 'left': left, 'zero': 0}
+        else:
+            options = {'up': up, 'diagonal': diagonal, 'left': left}
+        max_value = max(options.values())
+        return max_value, [k for k, v in options.items() if v == max_value]
 
 
     for i in range(1,M):
         for j in range(1,N):
-            score_matrix[i][j] = dp_function(i, j)
-            
+            max_value, _ = dp_function(i, j)
+            score_matrix[i][j] = max_value
+    
+
     #####################
     #  END CODING HERE  #
     #####################   
@@ -190,30 +194,38 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
             # todo, will continue
             pass
 
+    ''' Dynamic programming traceback starting at matrix index
+        (start_i, start_j). 
+        Immediately returns the resulting aligned sequences.
+    '''
     def traceback(start_i, start_j):
         aligned_seq1 = aligned_seq2 = ''
         i, j = start_i, start_j
-        while i > 0 or j > 0:
-            if i > 0 and score_matrix[i][j] == score_matrix[i-1][j] - gap_penalty:
+        while i > 0 or j > 0: 
+            _, options = dp_function(i, j)
+            if 'up' in options:
                 aligned_seq1 = seq1[i-1] + aligned_seq1
                 aligned_seq2 = '-' + aligned_seq2
                 i -= 1
-            elif i > 0 and j > 0 and score_matrix[i][j] == score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]:
+            elif 'diagonal' in options:
                 aligned_seq1 = seq1[i-1] + aligned_seq1
                 aligned_seq2 = seq2[j-1] + aligned_seq2
                 i -= 1
                 j -= 1
-            elif j > 0:
+            elif 'left' in options:
                 aligned_seq1 = '-' + aligned_seq1
                 aligned_seq2 = seq2[j-1] + aligned_seq2
                 j -= 1
+            elif 'zero' in options: # This is a "fat zero" in local alignment.
+                                    # Immediately stop when a fat zero is the only option! 
+                return aligned_seq1, aligned_seq2
+
         return aligned_seq1, aligned_seq2
     
 
     start_i, start_j = get_traceback_start()
-    aligned_seq1, aligned_seq2 = traceback(start_i, start_j)
-       
     align_score = score_matrix[start_i][start_j]
+    aligned_seq1, aligned_seq2 = traceback(start_i, start_j)
     alignment = (aligned_seq1, aligned_seq2, align_score)
     return (alignment, score_matrix)
 
