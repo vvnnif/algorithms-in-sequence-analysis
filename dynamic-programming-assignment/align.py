@@ -143,15 +143,21 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
     #####################
 
     def dp_function(i, j):
-        if i == j == 0:
-            return 0
-        up = score_matrix[i-1][j] - gap_penalty
-        diagonal = score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]
-        left = score_matrix[i][j-1] - gap_penalty
-        if strategy == 'local':
-            options = {'up': up, 'diagonal': diagonal, 'left': left, 'zero': 0}
+        if strategy == 'global':
+            if i == j == 0:
+                return 0, ['stop'] # For global alignment, only stop at (0,0)
         else:
-            options = {'up': up, 'diagonal': diagonal, 'left': left}
+            if i == 0 or j == 0:
+                return 0, ['stop'] # For local and semiglobal alignment, stop at first row or column
+        options = {}
+        if i > 0:
+            options.update({'up': score_matrix[i-1][j] - gap_penalty})
+        if i > 0 and j > 0:
+            options.update({'diagonal': score_matrix[i-1][j-1] + substitution_matrix[seq1[i-1]][seq2[j-1]]})
+        if j > 0:
+            options.update({'left': score_matrix[i][j-1] - gap_penalty})
+        if strategy == 'local':
+            options.update({'stop': 0}) # For local alignment, also stop at a "fat zero"
         max_value = max(options.values())
         return max_value, [k for k, v in options.items() if v == max_value]
 
@@ -181,18 +187,43 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
             # there are multiple such positions,
             # choose the upper-rightmost one.
             maxscore = float("-inf")
-            best_i, best_j = 0, 0
+            best_i, best_j = N, 0
             for i in range(M):
                 for j in range(N):
                     val = score_matrix[i][j]
                     if (val > maxscore
-                        or (val == maxscore and (i < best_i or (i == best_i and j > best_j)))):
+                        or (val == maxscore and (j > best_j or (j == best_j and i < best_i)))):                        
                         maxscore = val
                         best_i, best_j = i, j
             return best_i, best_j
+        
         if strategy == 'semiglobal':
-            # todo, will continue
-            pass
+            max_score = float("-inf")
+            start_positions = []
+    
+            # Check last row (seq1 fully aligned, seq2 may have suffix gaps)
+            i = M - 1
+            for j in range(N):
+                if score_matrix[i][j] > max_score:
+                    max_score = score_matrix[i][j]
+                    start_positions = [(i, j)]
+                elif score_matrix[i][j] == max_score:
+                    start_positions.append((i, j))
+
+            # Check last column (seq2 fully aligned, seq1 may have suffix gaps)  
+            j = N - 1
+            for i in range(M):
+                if score_matrix[i][j] > max_score:
+                    max_score = score_matrix[i][j]
+                    start_positions = [(i, j)]
+                elif score_matrix[i][j] == max_score:
+                    start_positions.append((i, j))
+
+            # Apply "high road": prefer higher row (lower i index)
+            if start_positions:
+                start_positions.sort(key=lambda x: (x[0], x[1]))  # Sort by i, then j
+                return start_positions[0]  # Lowest i index
+        
 
     ''' Dynamic programming traceback starting at matrix index
         (start_i, start_j). 
@@ -201,24 +232,53 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
     def traceback(start_i, start_j):
         aligned_seq1 = aligned_seq2 = ''
         i, j = start_i, start_j
-        while i > 0 or j > 0: 
+        while True:
             _, options = dp_function(i, j)
-            if 'up' in options:
+            if 'up' in options: # Corresponds to a gap in sequence 2
                 aligned_seq1 = seq1[i-1] + aligned_seq1
                 aligned_seq2 = '-' + aligned_seq2
                 i -= 1
-            elif 'diagonal' in options:
+            elif 'diagonal' in options: # Corresponds to no gap
                 aligned_seq1 = seq1[i-1] + aligned_seq1
                 aligned_seq2 = seq2[j-1] + aligned_seq2
                 i -= 1
                 j -= 1
-            elif 'left' in options:
+            elif 'left' in options: # Corresponds to a gap in sequence 1
                 aligned_seq1 = '-' + aligned_seq1
                 aligned_seq2 = seq2[j-1] + aligned_seq2
                 j -= 1
-            elif 'zero' in options: # This is a "fat zero" in local alignment.
-                                    # Immediately stop when a fat zero is the only option! 
-                return aligned_seq1, aligned_seq2
+            elif 'stop' in options: # For global alignment, this happens when i=j=0.
+                                    # For local alignment, this happens when i=0, j=0,
+                                    # or traversing a "fat zero" is the only remaining option.
+                                    # For semiglobal alignment, this happens when i=0 or j=0.
+                break
+
+        if strategy == 'semiglobal': # For semiglobal alignment, we still have to add trailing
+                                     # parts of the sequences after alignment.
+            unaligned_seq1_left = i # Number of still unaligned letters right of the alignment
+            unaligned_seq1_right = M-1-start_i # Number of still unaligned letters left of the alignment
+            unaligned_seq2_left = j # Same for seq2
+            unaligned_seq2_right = N-1-start_j  
+
+            # Should do this because s[-0:] = s, not ''
+            last_seq1_letters = '' if unaligned_seq1_right == 0 else seq1[-unaligned_seq1_right:]
+            last_seq2_letters = '' if unaligned_seq2_right == 0 else seq1[-unaligned_seq2_right:]
+
+            # Fill up both aligned sequences with unaligned letters and gaps
+            aligned_seq1 =  (
+                                ('-' * unaligned_seq2_left)   + 
+                                seq1[:unaligned_seq1_left]    + 
+                                aligned_seq1                  + 
+                                last_seq1_letters             +
+                                ('-' * unaligned_seq2_right)  
+                            )
+            aligned_seq2 =  (
+                                ('-' * unaligned_seq1_left)  + 
+                                seq2[:unaligned_seq2_left]   + 
+                                aligned_seq2                 + 
+                                last_seq2_letters            +
+                                ('-' * unaligned_seq1_right)
+                            )
 
         return aligned_seq1, aligned_seq2
     
