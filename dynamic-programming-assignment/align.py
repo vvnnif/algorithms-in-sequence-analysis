@@ -200,8 +200,8 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
         if strategy == 'semiglobal':
             max_score = float("-inf")
             start_positions = []
-    
-            # Check last row (seq1 fully aligned, seq2 may have suffix gaps)
+            
+            # Gather potential start positions in last row
             i = M - 1
             for j in range(N):
                 if score_matrix[i][j] > max_score:
@@ -210,7 +210,7 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
                 elif score_matrix[i][j] == max_score:
                     start_positions.append((i, j))
 
-            # Check last column (seq2 fully aligned, seq1 may have suffix gaps)  
+            # Gather potential start positions in last column
             j = N - 1
             for i in range(M):
                 if score_matrix[i][j] > max_score:
@@ -219,10 +219,10 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
                 elif score_matrix[i][j] == max_score:
                     start_positions.append((i, j))
 
-            # Apply "high road": prefer higher row (lower i index)
+            # Prefer higher row and higher column => lower i and higher j.
             if start_positions:
-                start_positions.sort(key=lambda x: (x[0], x[1]))  # Sort by i, then j
-                return start_positions[0]  # Lowest i index
+                start_positions.sort(key=lambda x: (x[0], -x[1]))  # Sort by i ascendingly, then j descendingly
+                return start_positions[0]  # Lowest i, highest j
         
 
     ''' Dynamic programming traceback starting at matrix index
@@ -262,7 +262,7 @@ def align(seq1, seq2, strategy, substitution_matrix, gap_penalty):
 
             # Should do this because s[-0:] = s, not ''
             last_seq1_letters = '' if unaligned_seq1_right == 0 else seq1[-unaligned_seq1_right:]
-            last_seq2_letters = '' if unaligned_seq2_right == 0 else seq1[-unaligned_seq2_right:]
+            last_seq2_letters = '' if unaligned_seq2_right == 0 else seq2[-unaligned_seq2_right:]
 
             # Fill up both aligned sequences with unaligned letters and gaps
             aligned_seq1 =  (
