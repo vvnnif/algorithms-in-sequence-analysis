@@ -8,7 +8,7 @@ INSTRUCTIONS:
     Complete the code (compatible with Python 3!) upload to CodeGrade via corresponding Canvas assignment.
 
 AUTHOR:
-    <Name and student ID here!>
+    Finn van Vlaanderen
 """
 
 import argparse
@@ -25,7 +25,20 @@ def read_fasta(filename):
     If the file is not in correct FASTA format, an error message should
     be shown (e.g. by raising ValueError).
     """
-    raise NotImplementedError
+    with open(filename,'r') as f:
+        seq = None
+        for i, line in enumerate(f):
+            if line.startswith('>'):
+                continue
+            elif i > 0 and len(line) > 0:
+                seq = line.strip()
+                break
+            else:
+                break
+        if seq == None: 
+            raise Exception('Error: file is not in FASTA format')
+        else:
+            return seq
 
 def string_rotations(seq):
     """Return a list containing all rotations of the given sequence.
@@ -36,7 +49,7 @@ def string_rotations(seq):
     ['banana$', 'anana$b', 'nana$ba', 'ana$ban',
      'na$bana', 'a$banan', '$banana']
     """
-    raise NotImplementedError
+    return [seq[-i:] + seq[:-i] for i in range(len(seq))]
 
 def bwt(rotations):
     """Return the Burrows-Wheeler Transform (BWT) of a sequence, given a list
@@ -46,7 +59,7 @@ def bwt(rotations):
     >>> bwt(string_rotations('banana$'))
     'annb$aa'
     """
-    raise NotImplementedError
+    return "".join(s[-1] for s in sorted(rotations))
 
 def rle(seq):
     """Return the Run-Length Encoding (RLE) of a string, as a string containing
