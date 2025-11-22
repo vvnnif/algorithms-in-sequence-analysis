@@ -69,7 +69,18 @@ def rle(seq):
     >>> rle('annb$aa')
     'a1n2b1$1a2'
     """
-    raise NotImplementedError
+    out = ''
+    counter = 0
+    last_char = seq[0]
+    for char in seq + ' ':
+        if char == last_char:
+            counter += 1
+        else:
+            out += last_char + str(counter)
+            counter = 1
+        last_char = char
+    return out
+    
     
 def rle_invert(rle_seq):
     """Given a Run-Length Encoded string, return the original string in its
@@ -79,7 +90,18 @@ def rle_invert(rle_seq):
     >>> rle_invert('a1n2b1$1a2')
     'annb$aa'
     """
-    raise NotImplementedError
+    out = ''
+    cur_number = ''
+    cur_letter = ''
+    for char in rle_seq + ' ':
+        if char.isnumeric():
+            cur_number += char
+            continue
+        elif cur_letter != '':
+            out += int(cur_number) * cur_letter
+            cur_number = ''    
+        cur_letter = char
+    return out
 
 def compute_rank_vector(bwt_seq):
     """Return the rank vector for the given BW-transformed string. The rank
@@ -91,7 +113,12 @@ def compute_rank_vector(bwt_seq):
     >>> compute_rank_vector('annb$aa')
     [0, 0, 1, 0, 0, 1, 2]
     """
-    raise NotImplementedError
+    char_counter = {char: 0 for char in bwt_seq}
+    out = []
+    for char in bwt_seq:
+        out.append(char_counter[char])
+        char_counter[char] += 1
+    return out
 
 def compute_f_map(bwt_seq):
     """Return, for the given BW-transformed string, a dictionary mapping each
@@ -104,7 +131,12 @@ def compute_f_map(bwt_seq):
 
     (The F-column for 'banana$' would be [$, a, a, a, b, n, n])
     """
-    raise NotImplementedError
+    f_col = sorted(bwt_seq)
+    out = {char: None for char in bwt_seq}
+    for i, row in enumerate(f_col):
+        if out[row] == None:
+            out[row] = i
+    return out
 
 def bwt_invert(bwt_seq, rank, f_map):
     """Invert the Burrows-Wheeler Transform of a sequence, given the transformed
@@ -115,11 +147,14 @@ def bwt_invert(bwt_seq, rank, f_map):
     >>> bwt_invert(seq, compute_rank_vector(seq), compute_f_map(seq))
     'banana$'
     """
-    raise NotImplementedError
-        
-
-
-
+    out = '$'
+    idx = f_map[out]
+    for _ in range(len(bwt_seq) - 1):
+        char_rank = rank[idx]
+        next_char = bwt_seq[idx]
+        out = next_char + out
+        idx = f_map[next_char] + char_rank
+    return out        
 
 
 
