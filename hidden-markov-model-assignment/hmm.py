@@ -8,7 +8,7 @@ INSTRUCTIONS:
     Complete the code (compatible with Python 3!) upload to CodeGrade via corresponding Canvas assignment.
 
 AUTHOR:
-    <your name and student number here>
+    Finn van Vlaanderen
 """
 
 import os.path as op
@@ -79,11 +79,13 @@ def forward(X,A,E):
     # Adapt the viterbi() function to account for the differences.
 
     # Middle columns
-    # for ...
+    for i,s in enumerate(X):
+        for l in emittingStates:
+            F[l][i+1] = E[l][s] * sum([F[k][i] * A[k][l] for k in allStates])
 
-    # Last columns
-    # for ...:
-    #     F['E'][-1] += ...
+    # Last column
+    for k in allStates:
+        F['E'][-1] += F[k][L-2] * A[k]['E']
 
     #####################
     #  END CODING HERE  #
@@ -110,10 +112,11 @@ def backward(X,A,E):
     #####################
     # START CODING HERE #
     #####################
-    # Remaining columns
-    # for i in range(L-3,-1,-1):
-    #     s = seq[i]
-    #     ...
+
+    for i in range(L-3,-1,-1):
+        s = X[i]
+        for k in allStates:
+            B[k][i] = sum([A[k][l] * E[l][s] * B[l][i+1] for l in emittingStates])
 
     #####################
     #  END CODING HERE  #
@@ -140,6 +143,10 @@ def baumwelch(set_X,A,E):
     new_E = {}
     for k in E:
         new_E[k] = {s:0 for s in E[k]}
+    print(new_E)
+    print(allStates)
+    print(emittingStates)
+    print(new_A)
 
     # Iterate through all sequences in X
     SLL = 0 # Sum Log-Likelihood
@@ -156,11 +163,25 @@ def baumwelch(set_X,A,E):
         # Calculate the expected transitions and emissions for the sequence.
         # Add the contributions to your posterior matrices.
         # Remember to normalize to the sequence's probability P!
-        
+
+        for k in allStates:
+            for l in emittingStates:
+                for i in range(1,len(X)):
+                    new_A[k][l] += F[k][i-1] * A[k][l] * E[l][X[i]] * B[l][i] 
+                    if X[i-1] == l:
+                        new_E[l][s] += F[k][i-1] * B[k][i-1] 
+                new_A[k][l] /= P
+                new_E[l][s] /= P
+
     # Outside the for loop: Maximization
     # Normalize row sums to 1 (except for one row in the Transition matrix!)
     # new_A = ...
     # new_E = ...
+
+    for k in allStates:
+        for l in emittingStates:
+            new_A[k][l] = new_A[k][l] / sum([new_A[k,ll] for ll in emittingStates])
+            new_E[l][s] = new_E[l][s] / sum([new_E[l,ss] for ss in None])
 
     #####################
     #  END CODING HERE  #
