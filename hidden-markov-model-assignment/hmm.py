@@ -159,15 +159,18 @@ def baumwelch(set_X,A,E):
         
         n = len(X)
 
+        # Add contributions for posteriors of A.
         for i in range(0, n):
             for k in allStates:
                 for l in emittingStates:
                     new_A[k][l] += F[k][i] * A[k][l] * E[l][X[i]] * B[l][i+1] / P
 
+        # Correctly handle the end state.
         for k in allStates:
             if 'E' in A[k]:
                 new_A[k]['E'] += F[k][n] * A[k]['E'] / P
 
+        # Add contributions for posteriors of E.
         for t in range(0, n):
             symbol = X[t]
             trellis_index = t + 1
@@ -185,10 +188,10 @@ def baumwelch(set_X,A,E):
 
     # Normalize the rows of new_E.
     for l in new_E:
-        ssum = sum(new_E[l].values())
-        if ssum > 0:
+        row_sum = sum(new_E[l].values())
+        if row_sum > 0:
             for s in new_E[l]:
-                new_E[l][s] /= ssum
+                new_E[l][s] /= row_sum
 
     #####################
     #  END CODING HERE  #
