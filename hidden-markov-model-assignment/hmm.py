@@ -143,10 +143,6 @@ def baumwelch(set_X,A,E):
     new_E = {}
     for k in E:
         new_E[k] = {s:0 for s in E[k]}
-    print(new_E)
-    print(allStates)
-    print(emittingStates)
-    print(new_A)
 
     # Iterate through all sequences in X
     SLL = 0 # Sum Log-Likelihood
@@ -160,28 +156,39 @@ def baumwelch(set_X,A,E):
         #####################
 
         # Inside the for loop: Expectation
-        # Calculate the expected transitions and emissions for the sequence.
-        # Add the contributions to your posterior matrices.
-        # Remember to normalize to the sequence's probability P!
+        
+        n = len(X)
+
+        for i in range(0, n):
+            for k in allStates:
+                for l in emittingStates:
+                    new_A[k][l] += F[k][i] * A[k][l] * E[l][X[i]] * B[l][i+1] / P
 
         for k in allStates:
+            if 'E' in A[k]:
+                new_A[k]['E'] += F[k][n] * A[k]['E'] / P
+
+        for t in range(0, n):
+            symbol = X[t]
+            trellis_index = t + 1
             for l in emittingStates:
-                for i in range(1,len(X)):
-                    new_A[k][l] += F[k][i-1] * A[k][l] * E[l][X[i]] * B[l][i] 
-                    if X[i-1] == l:
-                        new_E[l][s] += F[k][i-1] * B[k][i-1] 
-                new_A[k][l] /= P
-                new_E[l][s] /= P
-
+                new_E[l][symbol] += F[l][trellis_index] * B[l][trellis_index] / P
+        
     # Outside the for loop: Maximization
-    # Normalize row sums to 1 (except for one row in the Transition matrix!)
-    # new_A = ...
-    # new_E = ...
 
-    for k in allStates:
-        for l in emittingStates:
-            new_A[k][l] = new_A[k][l] / sum([new_A[k,ll] for ll in emittingStates])
-            new_E[l][s] = new_E[l][s] / sum([new_E[l,ss] for ss in None])
+    # Normalize the rows of new_A.
+    for k in new_A:
+        row_sum = sum(new_A[k].values())
+        if row_sum > 0 and k != 'E':
+            for l in new_A[k]:
+                new_A[k][l] /= row_sum
+
+    # Normalize the rows of new_E.
+    for l in new_E:
+        ssum = sum(new_E[l].values())
+        if ssum > 0:
+            for s in new_E[l]:
+                new_E[l][s] /= ssum
 
     #####################
     #  END CODING HERE  #
